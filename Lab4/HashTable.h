@@ -132,8 +132,8 @@ namespace Lab4
 			virtual bool Remove(K key) = 0;
 			virtual V& operator[](K key) = 0;
 		protected:
-			int GetHash(std::string key);
-			int GetHash(INT_64 digit) { return digit % capacity; };
+			int GetHash(float key);
+			int ModuleHash(int digit) { return digit % capacity; };
 			int GetHash2(INT_64 digit) { return 1 + (digit % (capacity - 1)); }
 			int Hashing(INT_64 digit, int trialsCount);
 
@@ -207,7 +207,7 @@ namespace Lab4
 			_form = new ChainsOfCollisions(size);
 		}
 
-		for (Iterator iter = this->Begin(); iter != this->End(); iter++)
+		for (Iterator iter = this->Begin(); iter != this->End(); iter++) //добавляем все пары ключ-значение из одной формы в другую
 			_form->Add(iter.cell->key, iter.cell->value);
 
 		delete form;
@@ -236,46 +236,46 @@ namespace Lab4
 	}
 
 	template<class K, class V>
-	inline int HashTable<K, V>::Form::GetHash(std::string key)
+	inline int HashTable<K, V>::Form::GetHash(float key)
 	{
-		const int maxBits = sizeof(INT_64) * CHAR_BIT;
-		std::bitset<maxBits> bits;
-		const int bitsPerChar = 5;
+		//float 10000.0000 - 15000.0000
 
-		correctLength:
-		
-		int i = 0;
-		while (key.length() * bitsPerChar > maxBits)
+		int digit = (int)(key * 10000); //преобразование к натуральному значению с точностью 10^-4
+
+		//100 000 000 <= digit <= 150 000 000
+
+		//свёртка к значению [10000,20000]
+
+		std::vector<int> values;
+
+		while (digit > 0)
 		{
-			key[i] = (key[i] + key[i + 1]) % ('a'+ 5) + 'a';
-			key.erase(key.begin() + i + 1);
-			i++;
-			if (i == key.length() - 1) break;
+			values.insert(values.begin(), digit % 1000);
+			digit /= 1000;
 		}
 
-		if (key.length() & bitsPerChar > maxBits) goto correctLength;		
+		int sum = 0;
 
-		for (int i = 0; i < key.length(); ++i)
-		{
-			char c = (key[i] - 'a' + 1);
-			for (int j = bitsPerChar; j >= 0 && c; --j)
-			{
-				if (c & 0x1) 
-				{
-					bits.set(bitsPerChar * i + j);
-				}
-				c >>= 1;
-			}
-		}
+		for (int i = 0; i < values.size(); i++)
+			sum += (values[i] xor (i + 1));
 
-		INT_64 digit = bits.to_ullong();
-		return GetHash(digit);
+		sum %= 2501;
+
+		// 0 <= sum <= 2500
+
+		int result = 10000 + sum * 4;
+
+		 //10000 <= result <= 20000
+
+		return ModuleHash(result);
 	}
 
 	template<class K, class V>
 	inline int HashTable<K, V>::Form::Hashing(INT_64 digit, int i)
-	{
-		INT_64 d = (INT_64)GetHash(digit) + i * (INT_64)GetHash2(digit);
+	{ //квадратичное хэширование
+		float c1 = 1;
+		float c2 = 2;
+		INT_64 d = (INT_64)ModuleHash(digit) + c1 * i + c2 * i * i;
 		return d % this->capacity; //модульное хэширование
 	}
 
@@ -364,23 +364,24 @@ namespace Lab4
 		return cell->value;
 	}
 
+	//метод ищет клетку с данным ключом, последнюю посещённую клетку сохраняет через указатель lastCell
 	template<class K, class V>
 	inline bool HashTable<K, V>::OpenAddressing::Find(K key, Cell** lastCell)
-	{
+	{ 
 		Form::trialsCount = 1;
 		int index = Form::GetHash(key);
 
-		Cell* cellDeleted = nullptr;
+		Cell* cellDeleted = nullptr; //если посетили клетку с состоянием Deleted (значение удалено)
 
 		*lastCell = &array[index];
-		while (array[index].state != Cell::State::Free)
+		while (array[index].state != Cell::State::Free) //пока не дойдём до свободной клетки (т.е. искомый ключ не найден)
 		{
 			if (Form::trialsCount == Form::capacity)
 				break;
 
 			if (array[index].state == Cell::State::Deleted)
 				cellDeleted = &array[index];
-			else if (array[index].state == Cell::State::Busy && array[index].key == key)
+			else if (array[index].state == Cell::State::Busy && array[index].key == key) //клетка найдена
 				return true;
 
 			index = Form::Hashing(index, Form::trialsCount++);
@@ -392,6 +393,7 @@ namespace Lab4
 		return false;
 	}
 
+	//поиск первой незанятой клетки начиная с индекса startIndex (метод используется итератором)
 	template<class K, class V>
 	inline void HashTable<K, V>::OpenAddressing::FindFirstBusyCell(int startIndex, int* index, Cell** cell) const
 	{
@@ -447,10 +449,10 @@ namespace Lab4
 		if (Find(key, &cell, &cellPrev))
 			return false;
 
-		if (cellPrev == nullptr && cell->state == Cell::State::Free)
+		if (cellPrev == nullptr && cell->state == Cell::State::Free) //если клетка - первая в цепочке коллизии
 			*cell = CellChain(key, value);
 		else
-			cell->next = new CellChain(key, value);
+			cell->next = new CellChain(key, value); //иначе - вставляем в конец цепочки
 
 		Form::size++;
 		return true;
@@ -547,7 +549,7 @@ namespace Lab4
 		if ((*lastCell)->key == key)
 			return true;
 
-		while ((*lastCell)->next != nullptr)
+		while ((*lastCell)->next != nullptr) //проход по цепочке коллизии
 		{
 			Form::trialsCount++;
 			*lastCellPrev = *lastCell;
@@ -560,6 +562,7 @@ namespace Lab4
 		return false;
 	}
 
+	//поиск следующей незанятой клетки (метод используется итератором)
 	template<class K, class V>
 	inline void HashTable<K, V>::ChainsOfCollisions::GetNextCell(int* index, Cell** cell) const
 	{
@@ -573,6 +576,7 @@ namespace Lab4
 		FindFirstBusyCell(*index + 1, index, cell);
 	}
 
+	//поиск первой незанятой клетки начиная с индекса startIndex (метод используется итератором)
 	template<class K, class V>
 	inline void HashTable<K, V>::ChainsOfCollisions::FindFirstBusyCell(int startIndex, int* index, Cell** cell) const
 	{

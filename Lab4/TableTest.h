@@ -12,8 +12,6 @@ const INT_64 mRand = (1 << 63) - 1;
 const INT_64 aRand = 6364136223846793005;
 const INT_64 cRand = 1442695040888963407;
 
-const int STRING_SIZE = 15;
-
 void setFirstRandomDigit() { srand(time(0)); RRand = (INT_64)rand(); }
 
 //линейный конгруэнтный генератор Xi+1=(a*Xi+c)%m
@@ -32,28 +30,14 @@ int randomInRange(int inclusiveMin, int inclusiveMax)
 	return lineRand() % (inclusiveMax - inclusiveMin + 1) + inclusiveMin;
 }
 
-string randomUpperCaseString()
+float randomSuccessFloat()
 {
-	string s;
-
-	for (int i = 0; i < STRING_SIZE; i++)
-	{
-		s.insert(i, 1, (char)randomInRange(65,90));
-	}
-
-	return s;
+	return (float)randomInRange(100000000, 150000000) / 10000;
 }
 
-string randomLowerCaseString()
+float randomMissFloat()
 {
-	string s;
-
-	for (int i = 0; i < STRING_SIZE; i++)
-	{
-		s.insert(i, 1, (char)randomInRange(97, 122));
-	}
-
-	return s;
+	return (float)randomInRange(150000001, 200000000) / 10000;
 }
 
 template<class K, class V>
@@ -114,7 +98,7 @@ void testTable(HashTable<K, V>& table, K* keys, K(*getMissKey)(), K(*getSuccessK
 
 void testOpenAddr(int keysCount)
 {
-	HashTable< string, int > table(keysCount);
+	HashTable< float, int > table(keysCount);
 
 	float fullCoef;
 	cout << "Коэффициент заполнения:";
@@ -122,28 +106,28 @@ void testOpenAddr(int keysCount)
 
 	keysCount = table.GetCapacity() * fullCoef;
 
-	string* keys = new string[keysCount];
+	float* keys = new float[keysCount];
 
 	setFirstRandomDigit();
 
 	for (int i = 0; i < keysCount; i++)
 	{
-		keys[i] = randomLowerCaseString();
+		keys[i] = randomSuccessFloat();
 		table.Add(keys[i], 1);
 	}
 
-	testTable(table, keys, randomUpperCaseString, randomLowerCaseString);
+	testTable(table, keys, randomMissFloat, randomSuccessFloat);
 
 	float alpha = table.GetSize() * 1.0 / table.GetCapacity();
 	cout << "Коэффициент заполнения после теста:" << alpha << endl;
-	cout << "Теоретическая трудоёмкость:" << 0.9 * (1 / alpha * log(1 / (1 - alpha))) + 0.1 * (1 / (1 - alpha)) << endl;
+	cout << "Теоретическая трудоёмкость:" << 0.9 * -log(1-alpha) / alpha + 0.1 * (1 / (1 - alpha)) << endl;
 
 	delete[] keys;
 }
 
 void testChainsColl(int keysCount)
 {
-	HashTable< string, int > table(keysCount);
+	HashTable< float, int > table(keysCount);
 	table.SetForm(FormName::ChainsOfCollisions);
 
 	float fullCoef;
@@ -152,16 +136,16 @@ void testChainsColl(int keysCount)
 
 	keysCount = table.GetCapacity() * fullCoef;
 
-	string* keys = new string[keysCount];
+	float* keys = new float[keysCount];
 
 	setFirstRandomDigit();
 
 	for (int i = 0; i < keysCount; i++) {
-		keys[i] = randomLowerCaseString();
+		keys[i] = randomSuccessFloat();
 		table.Add(keys[i], 1);
 	}
 
-	testTable(table, keys, randomUpperCaseString, randomLowerCaseString);
+	testTable(table, keys, randomMissFloat, randomSuccessFloat);
 
 	float alpha = table.GetSize() * 1.0 / table.GetCapacity();
 	cout << "Коэффициент заполнения после теста:" << alpha << endl;

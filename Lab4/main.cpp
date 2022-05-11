@@ -88,31 +88,28 @@ int inputInt(string hintForUser)
 	return input;
 }
 
-string inputString(string hintForUser)
+float inputFloat(string hintForUser)
 {
-	cout << hintForUser << ":";
+	cout << hintForUser << " (10000.0000 - 15000.0000):";
 
-	string input;
+	float input;
 
 	do
 	{
-		getline(cin, input);
+		cin >> input;
 
-		for (int i = 0; i < input.length(); i++)
-		{
-			if ('a' > input[i] || 'z' < input[i])
-				goto error;
-		}
+		if (input < 10000.0 || input > 15000.0)
+			goto error;
+
 		break;
-
 	error:
-		cout << "Required only small letters of the Latin alphabet" << endl;
+		cout << "Wrong value" << endl;
 	} while (true);
 	
 	return input;
 }
 
-void handleInput(int input, HashTable<string, int>& table, HashTable<string,int>::Iterator& iter)
+void handleInput(int input, HashTable<float, int>& table, HashTable<float,int>::Iterator& iter)
 {
 	switch (input)
 	{
@@ -123,12 +120,12 @@ void handleInput(int input, HashTable<string, int>& table, HashTable<string,int>
 		table.Clear();
 		break;
 	case (int)Command::Add:
-		printf("Метод вернул: %d\n", table.Add(inputString("Ключ"), 1));
+		printf("Метод вернул: %d\n", table.Add(inputFloat("Ключ"), 1));
 		break;
 	case (int)Command::GetByKey:
 	{
 		int e;
-		try { e = table[inputString("Ключ")]; }
+		try { e = table[inputFloat("Ключ")]; }
 		catch (const char* ex)
 		{
 			cout << ex << endl;
@@ -138,7 +135,7 @@ void handleInput(int input, HashTable<string, int>& table, HashTable<string,int>
 		break;
 	}
 	case (int)Command::ChangeByKey:
-		try { table[inputString("Ключ")] =  inputInt("Значение"); }
+		try { table[inputFloat("Ключ")] =  inputInt("Значение"); }
 		catch (const char* ex)
 		{
 			cout << ex << endl;
@@ -146,7 +143,7 @@ void handleInput(int input, HashTable<string, int>& table, HashTable<string,int>
 		};
 		break; 
 	case (int)Command::RemoveByKey:
-		printf("Метод вернул: %d\n", table.Remove(inputString("Ключ")));
+		printf("Метод вернул: %d\n", table.Remove(inputFloat("Ключ")));
 		break;
 	case (int)Command::GetSize:
 		cout << table.GetSize() << endl;
@@ -215,8 +212,8 @@ int main()
 	};
 	sort(commandsView.begin(), commandsView.end(), sortCommands);
 
-	HashTable<string, int> table(10);
-	HashTable<string, int>::Iterator iter;
+	HashTable<float, int> table(10);
+	HashTable<float, int>::Iterator iter;
 
 	printCommands();
 
