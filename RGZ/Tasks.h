@@ -19,117 +19,156 @@ protected:
 
 #pragma region Task1
 
-string task1Description = "Определение вершин, отстоящих на расстоянии d от заданной вершины (d – число рёбер)";
+string task1Description = "Определение диаметра связного неориентированного графа";
 
 template <class Vertex, class Edge>
-class Task1v13: public Task<Vertex, Edge>
+class Task1v4 : public Task<Vertex, Edge>
 {
 public:
-	Task1v13(Graph<Vertex, Edge>& graph) : Task<Vertex, Edge>(graph) { Restart(); };
+	Task1v4(Graph<Vertex, Edge>& graph) : Task<Vertex, Edge>(graph)
+	{
+		if (graph.IsDirected())
+			throw "Граф должен быть неориентированным";
+		Restart();
+	};
 	virtual void Restart();
 	virtual void Result();
 protected:
-	bool FindVertex(Vertex** vertex);
-	void GetAllNeighboringVertexes(Vertex* vertex, vector<Vertex*>& neighbors);
-	vector<Vertex*> result;
+	int result;
+	vector<vector<int>> GetWeightMatrix();
+	vector<Vertex*> GetAllVertexes();
+	int GetMaxWeight(vector<vector<int>> weights, int vertexIndex);
+	bool IsGraphConnected(vector<vector<int>> weights);
 };
 
 template<class Vertex, class Edge>
-inline void Task1v13<Vertex, Edge>::Restart()
+inline void Task1v4<Vertex, Edge>::Result()
 {
-	Vertex* v;
-	if (!FindVertex(&v))
-	{
-		cout << "Вершина не найдена\n";
+	cout << result << endl;
+}
+
+template<class Vertex, class Edge>
+inline void Task1v4<Vertex, Edge>::Restart()
+{
+	result = -1;
+
+	int vertexes = Task<Vertex, Edge>::graph->GetVertexesCount();
+
+	if (vertexes == 0)
 		return;
-	}
 
-	int d = Input<int>::Get("d");
+	vector<vector<int>> weights = GetWeightMatrix();
 
-	if (d < 0)
+	for (int i = 0; i < vertexes; i++)
 	{
-		cout << "Неверный параметр\n";
-		return;
-	}
-
-	result.clear();
-
-	vector<int> prevIndexes;
-
-	vector<Vertex*> vertexes;
-	vertexes.push_back(v);
-	prevIndexes.push_back(v->index);
-
-	int curD = 0;
-	while (curD != d)
-	{
-		if (vertexes.empty())
-			break;
-
-		vector<Vertex*> nextVertexes;
-
-		for (auto v : vertexes)
-			GetAllNeighboringVertexes(v, nextVertexes);
-
-		vertexes.clear();
-
-		for (auto v : nextVertexes)
+		for (int j = 0; j < vertexes; j++)
 		{
-			if (std::find(prevIndexes.begin(), prevIndexes.end(), v->index) == prevIndexes.end())
+			for (int s = 0; s < vertexes; s++)
 			{
-				vertexes.push_back(v);
+				int possibleMin = weights[j][i] + weights[i][s];
+				if (weights[j][i] == numeric_limits<int>::max() || weights[i][s] == numeric_limits<int>::max())
+					possibleMin = numeric_limits<int>::max();
+
+				weights[j][s] = std::min(weights[j][s], possibleMin);
 			}
 		}
-
-		for (auto v : vertexes)
-			prevIndexes.push_back(v->index);
-
-		curD++;
 	}
 
-	result = vertexes;
-}
+	if (IsGraphConnected(weights) == false)
+		throw "Граф не связный";
 
-template<class Vertex, class Edge>
-inline void Task1v13<Vertex, Edge>::Result()
-{
-	if (result.empty())
-		cout << "Нет таких вершин\n";
-	for (auto v : result)
+	vector<int> mins(vertexes);
+	int diameter = -1;
+	for (int i = 0; i < vertexes; i++)
 	{
-		v->Print();
-		cout << endl;
+		mins[i] = GetMaxWeight(weights, i);
+		diameter = std::max(diameter, mins[i]);
 	}
+
+	result = diameter;
 }
 
 template<class Vertex, class Edge>
-inline bool Task1v13<Vertex, Edge>::FindVertex(Vertex** vertex)
+inline vector<vector<int>> Task1v4<Vertex, Edge>::GetWeightMatrix()
 {
-	typename Graph<Vertex, Edge>::VertexesIterator iter(*Task<Vertex,Edge>::graph);
-	string name = Input<string>::Get("Имя вершины");
+	int vertexes = Task<Vertex, Edge>::graph->GetVertexesCount();
+
+	vector<vector<int>> weights;
+
+	for (int i = 0; i < vertexes; i++)
+	{
+		weights.push_back(vector<int>());
+		for (int j = 0; j < vertexes; j++)
+			weights[i].push_back(numeric_limits<int>::max());
+	}
+
+	typename Graph<Vertex, Edge>::EdgesIterator iter(*Task<Vertex, Edge>::graph);
 
 	while (iter != iter.End())
 	{
-		if ((*iter).GetName() == name)
+		Vertex* v1 = (*iter).V1();
+		Vertex* v2 = (*iter).V2();
+		weights[v1->index][v2->index] = (*iter).GetWeight();
+
+		if (Task<Vertex, Edge>::graph->IsDirected() == false)
+			weights[v2->index][v1->index] = (*iter).GetWeight();
+		iter++;
+	}
+
+	return weights;
+}
+
+template<class Vertex, class Edge>
+inline vector<Vertex*> Task1v4<Vertex, Edge>::GetAllVertexes()
+{
+	vector<Vertex*> vertexes;
+	typename Graph<Vertex, Edge>::VertexesIterator iter(*Task<Vertex, Edge>::graph);
+
+	while (iter != iter.End())
+	{
+		vertexes.push_back(&(*iter));
+		iter++;
+	}
+
+	return vertexes;
+}
+
+template<class Vertex, class Edge>
+inline int Task1v4<Vertex, Edge>::GetMaxWeight(vector<vector<int>> weights, int vertexIndex)
+{
+	int max = (vertexIndex == 0 ? -1 : weights[0][vertexIndex]);
+	if (weights.size() == 1) max = weights[0][0];
+
+	for (int i = 0; i < weights.size(); i++)
+	{
+		if (i == vertexIndex) continue;
+
+		max = std::max(max, weights[i][vertexIndex]);
+	}
+
+	return max;
+}
+
+template<class Vertex, class Edge>
+inline bool Task1v4<Vertex, Edge>::IsGraphConnected(vector<vector<int>> weights)
+{
+	bool isConnected = true;
+
+	for (int i = 0; i < weights.size(); i++)
+	{
+		for (int j = 0; j < weights.size(); j++)
 		{
-			*vertex = &((*iter));
-			return true;
+			if (j == i) continue;
+
+			if (weights[i][j] == numeric_limits<int>::max())
+			{
+				isConnected = false;
+				break;
+			}
 		}
-		iter++;
 	}
-	return false;
-}
 
-template<class Vertex, class Edge>
-inline void Task1v13<Vertex, Edge>::GetAllNeighboringVertexes(Vertex* vertex, vector<Vertex*>& neighbors)
-{
-	typename Graph<Vertex, Edge>::OutputEdgesIterator iter(*Task<Vertex,Edge>::graph, vertex);
-
-	while (iter != iter.End())
-	{
-		neighbors.push_back((*iter).V2());
-		iter++;
-	}
+	return isConnected;
 }
 
 #pragma endregion
