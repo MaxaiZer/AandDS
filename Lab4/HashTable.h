@@ -134,8 +134,7 @@ namespace Lab4
 		protected:
 			int GetHash(float key);
 			int ModuleHash(int digit) { return digit % capacity; };
-			int GetHash2(INT_64 digit) { return 1 + (digit % (capacity - 1)); }
-			int Hashing(INT_64 digit, int trialsCount);
+			int Hashing(int digit, int trialsCount);
 
 			virtual void FindFirstBusyCell(int startIndex, int* index, Cell** cell) const = 0;
 			virtual void GetNextCell(int* index, Cell** cell) const = 0;
@@ -271,7 +270,7 @@ namespace Lab4
 	}
 
 	template<class K, class V>
-	inline int HashTable<K, V>::Form::Hashing(INT_64 digit, int i)
+	inline int HashTable<K, V>::Form::Hashing(int digit, int i)
 	{ //квадратичное хэширование
 		float c1 = 1;
 		float c2 = 2;
