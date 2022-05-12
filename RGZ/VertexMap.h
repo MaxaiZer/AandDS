@@ -5,100 +5,61 @@
 
 using namespace std;
 
-template <class Vertex, class Edge>
+template <class Name, class Data = Vertex<Name, typename class T>*>
 class VertexMap
 {
 public:
-	VertexMap(Graph<Vertex, Edge>& graph) : graph(&graph) {};
-	bool AddVertex(string name);
-	Vertex* GetVertex(string name);
-	bool RemoveVertex(string name);
-	void SetNamesToAllVertexes();
-	bool SwitchName(string oldName, string newName);
+	VertexMap() {};
+	bool Add(Name name, Data vertex);
+	Data Get(Name name);
+	bool SwitchName(Name oldName, Name newName);
+	bool Remove(Name name);
+	void Clear() { map.clear(); }
 
-private:
-	std::map<string, Vertex*> map;
-	Graph<Vertex, Edge>* graph;
+protected:
+	std::map<Name, Data> map;
 };
 
-template<class Vertex, class Edge>
-inline bool VertexMap<Vertex, Edge>::AddVertex(string name)
+template<class Name, class Data>
+inline bool VertexMap<Name, Data>::Add(Name name, Data vertex)
 {
-	auto it = map.find(name);
-	if (it != map.end())
+	if (Get(name) != nullptr)
 		return false;
 
-	Vertex* vertex = graph->AddVertex();
-	vertex->SetName(name);
-	std::pair<string, Vertex*> p(name, vertex);
-	map.insert(p);
+	map.insert(std::pair<Name, Data>{name, vertex});
 	return true;
 }
 
-template<class Vertex, class Edge>
-inline Vertex* VertexMap<Vertex, Edge>::GetVertex(string name)
+template<class Name, class Data>
+inline Data VertexMap<Name, Data>::Get(Name name)
 {
 	auto it = map.find(name);
-
-	if (it == map.end())
-		return nullptr;
-
-	return (*it).second;
+	return (it == map.end() ? nullptr : (*it).second);
 }
 
-template<class Vertex, class Edge>
-inline bool VertexMap<Vertex, Edge>::RemoveVertex(string name)
+template<class Name, class Data>
+inline bool VertexMap<Name, Data>::SwitchName(Name oldName, Name newName)
 {
-	auto it = map.find(name);
-	if (it == map.end())
-		return false;
 
-	graph->RemoveVertex((*it).second);
-	map.erase(it);
-
-	return true;
-}
-
-template<class Vertex, class Edge>
-inline void VertexMap<Vertex, Edge>::SetNamesToAllVertexes()
-{
-	typename Graph<Vertex, Edge>::VertexesIterator iter(*graph);
-
-	vector<int> code;
-	code.push_back(0);
-
-	while (iter != iter.End())
-	{
-		string name;
-
-		for (int i = 0; i < code.size(); i++)
-			name.insert(name.end(), (char)(code[i] + 97));
-
-		(*iter).SetName(name);
-
-		std::pair<string, Vertex*> p(name, &(*iter));
-		map.insert(p);
-
-		if (code.back() == 26)
-			code.push_back(0);
-		else
-			code.back()++;
-
-		iter++;
-	}
-}
-
-template<class Vertex, class Edge>
-inline bool VertexMap<Vertex, Edge>::SwitchName(string oldName, string newName)
-{
-	Vertex* v1 = GetVertex(oldName);
-	Vertex* v2 = GetVertex(newName);
+	Data v1 = Get(oldName);
+	Data v2 = Get(newName);
 	if (v1 == nullptr || v2 != nullptr) return false;
 
 	v1->SetName(newName);
 
 	map.erase(map.find(oldName));
-	std::pair<string, Vertex*> p(newName, v1);
+	std::pair<Name, Data> p(newName, v1);
 	map.insert(p);
+	return true;
+}
+
+template<class Name, class Data>
+inline bool VertexMap<Name, Data>::Remove(Name name)
+{
+	auto it = map.find(name);
+	if (it == map.end())
+		return false;
+
+	map.erase(it);
 	return true;
 }

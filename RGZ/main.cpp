@@ -18,7 +18,7 @@ using RGZGraph = Graph<_Vertex, _Edge>;
 #define BACK_TO_MENU -1
 
 RGZGraph* graph = new RGZGraph();
-VertexMap<_Vertex, _Edge> vertexMap(*graph);
+VertexMap<string, _Vertex*> vertexMap;
 RGZGraph::VertexesIterator vIterator(*graph);
 RGZGraph::EdgesIterator eIterator(*graph);
 RGZGraph::OutputEdgesIterator outEIterator(*graph, nullptr);
@@ -59,9 +59,9 @@ void printCommands(vector<commandView> commandsView)
 
 }
 
-bool GetVertex(_Vertex** vertex, string hint)
+bool getVertex(_Vertex** vertex, string hint)
 {
-	*vertex = vertexMap.GetVertex(Input<string>::Get(hint));
+	*vertex = vertexMap.Get(Input<string>::Get(hint));
 
 	if (*vertex == nullptr)
 	{
@@ -71,21 +71,21 @@ bool GetVertex(_Vertex** vertex, string hint)
 	return true;
 }
 
-bool GetTwoVertixes(_Vertex** array)
+bool getTwoVertixes(_Vertex** array)
 {
 	for (int i = 0; i < 2; i++)
 	{
-		if (!GetVertex(&array[i], "Имя вершины #" + to_string(i + 1)))
+		if (!getVertex(&array[i], "Имя вершины #" + to_string(i + 1)))
 			return false;
 	}
 	return true;
 }
 
-bool GetEdge(_Edge** edge)
+bool getEdge(_Edge** edge)
 {
 	_Vertex* vertexes[2];
 
-	if (!GetTwoVertixes(vertexes))
+	if (!getTwoVertixes(vertexes))
 		return false;
 
 	*edge = graph->GetEdge(vertexes[0], vertexes[1]);
@@ -95,16 +95,42 @@ bool GetEdge(_Edge** edge)
 		cout << "Ребро не найдено\n";
 		return false;
 	}
-		
+
 	return true;
 }
 
-void UpdateGraphHelpers()
+void setNamesToAllVertexes()
+{
+	typename Graph<_Vertex, _Edge>::VertexesIterator iter(*graph);
+	vector<int> code;
+	code.push_back(0);
+
+	while (iter != iter.End())
+	{
+		string name;
+
+		for (int i = 0; i < code.size(); i++)
+			name.insert(name.end(), (char)(code[i] + 97));
+
+		(*iter).SetName(name);
+
+		vertexMap.Add(name, &(*iter));
+
+		if (code.back() == 26)
+			code.push_back(0);
+		else
+			code.back()++;
+
+		iter++;
+	}
+}
+
+void updateGraphHelpers()
 {
 	vIterator = RGZGraph::VertexesIterator(*graph);
 	eIterator = RGZGraph::EdgesIterator(*graph);
 	outEIterator = RGZGraph::OutputEdgesIterator(*graph, nullptr);
-	vertexMap = VertexMap <_Vertex, _Edge>(*graph);
+	vertexMap.Clear();
 }
 
 class CommandsHandler
@@ -120,9 +146,10 @@ class GraphCommands : public CommandsHandler
 public:
 	GraphCommands() { PrintCommands(); }
 
-	enum class Command { Create, CreateVDF, CreateVEDF, IsDirected, GetSaturation, GetForm, SetForm, 
+	enum class Command {
+		Create, CreateVDF, CreateVEDF, IsDirected, GetSaturation, GetForm, SetForm,
 		GetEdgesCount, AddEdge, GetEdge, SetEdgeData, GetEdgeData, SetEdgeWeight, GetEdgeWeight,
-		RemoveEdge, GetVertexesCount, AddVertex, SetVertexData, GetVertexData, SwitchName, RemoveVertex, 
+		RemoveEdge, getVertexesCount, AddVertex, SetVertexData, GetVertexData, SwitchName, RemoveVertex,
 		Print, PrintCommands, ReturnToMenu
 	};
 
@@ -130,25 +157,20 @@ public:
 	{
 		int input = Input<int>::Get("Номер команды");
 
-		#define TRY_GET_EDGE _Edge* edge; if (!GetEdge(&edge)) break;
-		#define TRY_GET_VERTEX _Vertex* vertex = vertexMap.GetVertex(Input<string>::Get("Имя вершины")); \
-		if (vertex == nullptr)\
-		 { cout << "Вершина не найдена\n"; break; }
-
 		switch (input)
 		{
 		case (int)Command::Create:
 			delete graph;
 			graph = new RGZGraph();
-			UpdateGraphHelpers();
+			updateGraphHelpers();
 			break;
 		case (int)Command::CreateVDF:
 		{
 			delete graph;
 			RGZGraph::Form form = (RGZGraph::Form)(Input<bool>::Get("Форма графа L/M"));
 			graph = new RGZGraph(Input<int>::Get("Количество вершин"), Input<bool>::Get("Направленный ли граф"), form);
-			UpdateGraphHelpers();
-			vertexMap.SetNamesToAllVertexes();
+			updateGraphHelpers();
+			setNamesToAllVertexes();
 			break;
 		}
 		case (int)Command::CreateVEDF:
@@ -156,8 +178,8 @@ public:
 			delete graph;
 			RGZGraph::Form form = (RGZGraph::Form)(Input<bool>::Get("Форма графа L/M"));
 			graph = new RGZGraph(Input<int>::Get("Количество вершин"), Input<int>::Get("Количество случайных рёбер"), Input<bool>::Get("Направленный ли граф"), form);
-			UpdateGraphHelpers();
-			vertexMap.SetNamesToAllVertexes();
+			updateGraphHelpers();
+			setNamesToAllVertexes();
 			break;
 		}
 		case (int)Command::PrintCommands:
@@ -179,18 +201,36 @@ public:
 			break;
 		case (int)Command::AddVertex:
 		{
-			cout << "Метод вернул: " << vertexMap.AddVertex(Input<string>::Get("Имя вершины")) << endl;
+			string name = Input<string>::Get("Имя вершины");
+			_Vertex* v = vertexMap.Get(name);
+			if (v != nullptr)
+			{
+				cout << "Вершина с таким именем уже существует\n";
+				break;
+			}
+			v = graph->AddVertex();
+			v->SetName(name);
+			vertexMap.Add(name, v);
 			break;
 		}
 		case (int)Command::RemoveVertex:
 		{
-			cout << "Метод вернул: " << vertexMap.RemoveVertex(Input<string>::Get("Имя вершины")) << endl;
+			string name = Input<string>::Get("Имя вершины");
+			_Vertex* v = vertexMap.Get(name);
+			if (v == nullptr)
+			{
+				cout << "Вершины с таким именем не существует\n";
+				break;
+			}
+
+			graph->RemoveVertex(v);
+			vertexMap.Remove(name);
 			break;
 		}
 		case (int)Command::AddEdge:
 		{
 			_Vertex* vertexes[2];
-			if (!GetTwoVertixes(vertexes))
+			if (!getTwoVertixes(vertexes))
 				break;
 
 			_Edge* edge = graph->AddEdge(vertexes[0], vertexes[1]);
@@ -200,7 +240,7 @@ public:
 		case (int)Command::RemoveEdge:
 		{
 			_Vertex* vertexes[2];
-			if (!GetTwoVertixes(vertexes))
+			if (!getTwoVertixes(vertexes))
 				break;
 
 			cout << "Метод вернул: " << graph->RemoveEdge(vertexes[0], vertexes[1]) << endl;
@@ -208,60 +248,66 @@ public:
 		}
 		case (int)Command::GetEdge:
 		{
-			TRY_GET_EDGE
-				edge->Print();
+			_Edge* edge; if (!getEdge(&edge)) break;
+			edge->Print();
 			cout << endl;
 			break;
 		}
 		case (int)Command::SetEdgeData:
 		{
-			TRY_GET_EDGE
-				edge->SetData(Input<string>::Get("Данные"));
+			_Edge* edge; if (!getEdge(&edge)) break;
+			edge->SetData(Input<string>::Get("Данные"));
 			break;
 		}
 		case (int)Command::GetEdgeData:
 		{
-			TRY_GET_EDGE
-				if (edge->HasData())
-					cout << edge->GetData() << endl;
-				else
-					cout << "Данные не заданы\n";
+			_Edge* edge; if (!getEdge(&edge)) break;
+			if (edge->HasData())
+				cout << edge->GetData() << endl;
+			else
+				cout << "Данные не заданы\n";
 			break;
 		}
 		case (int)Command::SetEdgeWeight:
 		{
-			TRY_GET_EDGE
-				edge->SetWeight(Input<int>::Get("Вес"));
+			_Edge* edge; if (!getEdge(&edge)) break;
+			edge->SetWeight(Input<int>::Get("Вес"));
 			break;
 		}
 		case (int)Command::GetEdgeWeight:
 		{
-			TRY_GET_EDGE
-				if (edge->HasWeight())
-					cout << edge->GetWeight() << endl;
-				else
-					cout << "Вес не задан\n";;
+			_Edge* edge; if (!getEdge(&edge)) break;
+			if (edge->HasWeight())
+				cout << edge->GetWeight() << endl;
+			else
+				cout << "Вес не задан\n";;
 			break;
 		}
 		case (int)Command::SetVertexData:
 		{
-			TRY_GET_VERTEX
-				vertex->SetData(Input<int>::Get("Данные"));
+			_Vertex* vertex;
+			if (getVertex(&vertex, "Имя вершины") == false)
+				break;
+
+			vertex->SetData(Input<int>::Get("Данные"));
 			break;
 		}
 		case (int)Command::GetVertexData:
 		{
-			TRY_GET_VERTEX
-				if (vertex->HasData())
-					cout << vertex->GetData() << endl;
-				else
-					cout << "Данные не заданы\n";
+			_Vertex* vertex;
+			if (getVertex(&vertex, "Имя вершины") == false)
+				break;
+
+			if (vertex->HasData())
+				cout << vertex->GetData() << endl;
+			else
+				cout << "Данные не заданы\n";
 			break;
 		}
 		case (int)Command::GetEdgesCount:
 			cout << graph->GetEdgesCount() << endl;
 			break;
-		case (int)Command::GetVertexesCount:
+		case (int)Command::getVertexesCount:
 			cout << graph->GetVertexesCount() << endl;
 			break;
 		case (int)Command::GetSaturation:
@@ -295,7 +341,7 @@ protected:
 	{(int)Command::SetEdgeWeight, "Задать вес ребра"},
 	{(int)Command::GetEdgeWeight, "Получить вес ребра"},
 	{(int)Command::RemoveEdge, "Удалить ребро"},
-	{(int)Command::GetVertexesCount, "Количество вершин"},
+	{(int)Command::getVertexesCount, "Количество вершин"},
 	{(int)Command::AddVertex, "Добавить вершину"},
 	{(int)Command::SetVertexData, "Задать данные вершины"},
 	{(int)Command::GetVertexData, "Получить данные вершины"},
@@ -316,7 +362,7 @@ public:
 	enum class Command {
 		VIteratorBegin, VIteratorValue, VIteratorInc, VIteratorEnd,
 		EIteratorBegin, EIteratorValue, EIteratorInc, EIteratorEnd,
-		OutEIteratorBegin, OutEIteratorValue, OutEIteratorInc, OutEIteratorEnd, 
+		OutEIteratorBegin, OutEIteratorValue, OutEIteratorInc, OutEIteratorEnd,
 		PrintCommands, ReturnToMenu
 	};
 
@@ -362,9 +408,9 @@ public:
 		{
 			_Vertex* vertex;
 
-			if (!GetVertex(&vertex, "Имя вершины"))
+			if (!getVertex(&vertex, "Имя вершины"))
 				break;
-			
+
 			outEIterator = RGZGraph::OutputEdgesIterator(*graph, vertex);
 			break;
 		}
@@ -415,7 +461,7 @@ template <class T>
 class TaskCommands : public CommandsHandler
 {
 public:
-	TaskCommands(T** task, string description): task(task), taskDescription(description) { PrintCommands(); }
+	TaskCommands(T** task, string description) : task(task), taskDescription(description) { PrintCommands(); }
 
 	enum class Command {
 		Create, Restart, Result, PrintCommands, ReturnToMenu
@@ -431,11 +477,11 @@ public:
 		{
 			delete* task;
 			try { *task = new T(*graph); }
-			catch (const char* ex) 
-			{ 
-			cout << ex << endl; 
-			*task = nullptr;
-			}		
+			catch (const char* ex)
+			{
+				cout << ex << endl;
+				*task = nullptr;
+			}
 			break;
 		}
 		case (int)Command::Restart:
@@ -541,7 +587,6 @@ protected:
 int main()
 {
 	setlocale(LC_ALL, "Russian");
-
 	srand(time(NULL));
 
 	MainMenu menu;
