@@ -378,7 +378,7 @@ namespace Lab4
 			if (Form::trialsCount == Form::capacity)
 				break;
 
-			if (array[index].state == Cell::State::Deleted)
+			if (array[index].state == Cell::State::Deleted && cellDeleted == nullptr)
 				cellDeleted = &array[index];
 			else if (array[index].state == Cell::State::Busy && array[index].key == key) //клетка найдена
 				return true;
