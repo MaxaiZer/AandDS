@@ -23,8 +23,8 @@ RGZGraph::VertexesIterator vIterator(*graph);
 RGZGraph::EdgesIterator eIterator(*graph);
 RGZGraph::OutputEdgesIterator outEIterator(*graph, nullptr);
 
-Task1v13<_Vertex, _Edge>* task1 = nullptr;
-Task2v14<_Vertex, _Edge>* task2 = nullptr;
+Task1v8<_Vertex, _Edge>* task1 = nullptr;
+Task2v9<_Vertex, _Edge>* task2 = nullptr;
 
 void printCommands(vector<commandView> commandsView)
 {
@@ -563,10 +563,10 @@ public:
 			handler = new IteratorsCommands();
 			break;
 		case 3:
-			handler = new TaskCommands<Task1v13<_Vertex, _Edge>>(&task1, task1Description);
+			handler = new TaskCommands<Task1v8<_Vertex, _Edge>>(&task1, task1Description);
 			break;
 		case 4:
-			handler = new TaskCommands<Task2v14<_Vertex, _Edge>>(&task2, task2Description);
+			handler = new TaskCommands<Task2v9<_Vertex, _Edge>>(&task2, task2Description);
 			break;
 		case 5:
 			exit(0);

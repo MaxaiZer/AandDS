@@ -19,24 +19,51 @@ protected:
 
 #pragma region Task1
 
-string task1Description = "Определение вершин, отстоящих на расстоянии d от заданной вершины (d – число рёбер)";
+string task1Description = "Поиск всех простых циклов, включающих заданную вершину орграфа";
 
 template <class Vertex, class Edge>
-class Task1v13: public Task<Vertex, Edge>
+class Task1v8 : public Task<Vertex, Edge>
 {
 public:
-	Task1v13(Graph<Vertex, Edge>& graph) : Task<Vertex, Edge>(graph) { Restart(); };
+	Task1v8(Graph<Vertex, Edge>& graph) : Task<Vertex, Edge>(graph)
+	{
+		if (graph.IsDirected() == false)
+			throw "Граф должен быть направленным";
+		Restart();
+	};
 	virtual void Restart();
 	virtual void Result();
 protected:
+	enum State { ProbablyInCycle, NotInCycle };
+
+	vector<vector<Vertex*>> result;
 	bool FindVertex(Vertex** vertex);
+	void FindCycle(Vertex* v, vector<State>& colors, vector<Vertex*> path);
 	void GetAllNeighboringVertexes(Vertex* vertex, vector<Vertex*>& neighbors);
-	vector<Vertex*> result;
 };
 
 template<class Vertex, class Edge>
-inline void Task1v13<Vertex, Edge>::Restart()
+inline void Task1v8<Vertex, Edge>::Result()
 {
+	if (result.size() == 0)
+	{
+		cout << "Циклы не найдены\n";
+		return;
+	}
+
+	for (auto path : result)
+	{
+		for (auto elem : path)
+			cout << elem->GetName() << " ";
+		cout << endl;
+	}
+}
+
+template<class Vertex, class Edge>
+inline void Task1v8<Vertex, Edge>::Restart()
+{
+	result.clear();
+
 	Vertex* v;
 	if (!FindVertex(&v))
 	{
@@ -44,68 +71,17 @@ inline void Task1v13<Vertex, Edge>::Restart()
 		return;
 	}
 
-	int d = Input<int>::Get("d");
+	vector<Vertex*> path;
+	path.push_back(v);
+	vector <State> states(Task<Vertex,Edge>::graph->GetVertexesCount(), ProbablyInCycle);
 
-	if (d < 0)
-	{
-		cout << "Неверный параметр\n";
-		return;
-	}
-
-	result.clear();
-
-	vector<int> prevIndexes;
-
-	vector<Vertex*> vertexes;
-	vertexes.push_back(v);
-	prevIndexes.push_back(v->index);
-
-	int curD = 0;
-	while (curD != d)
-	{
-		if (vertexes.empty())
-			break;
-
-		vector<Vertex*> nextVertexes;
-
-		for (auto v : vertexes)
-			GetAllNeighboringVertexes(v, nextVertexes);
-
-		vertexes.clear();
-
-		for (auto v : nextVertexes)
-		{
-			if (std::find(prevIndexes.begin(), prevIndexes.end(), v->index) == prevIndexes.end())
-			{
-				vertexes.push_back(v);
-			}
-		}
-
-		for (auto v : vertexes)
-			prevIndexes.push_back(v->index);
-
-		curD++;
-	}
-
-	result = vertexes;
+	FindCycle(v, states, path);
 }
 
 template<class Vertex, class Edge>
-inline void Task1v13<Vertex, Edge>::Result()
+inline bool Task1v8<Vertex, Edge>::FindVertex(Vertex** vertex)
 {
-	if (result.empty())
-		cout << "Нет таких вершин\n";
-	for (auto v : result)
-	{
-		v->Print();
-		cout << endl;
-	}
-}
-
-template<class Vertex, class Edge>
-inline bool Task1v13<Vertex, Edge>::FindVertex(Vertex** vertex)
-{
-	typename Graph<Vertex, Edge>::VertexesIterator iter(*Task<Vertex,Edge>::graph);
+	typename Graph<Vertex, Edge>::VertexesIterator iter(*Task<Vertex, Edge>::graph);
 	string name = Input<string>::Get("Имя вершины");
 
 	while (iter != iter.End())
@@ -121,9 +97,43 @@ inline bool Task1v13<Vertex, Edge>::FindVertex(Vertex** vertex)
 }
 
 template<class Vertex, class Edge>
-inline void Task1v13<Vertex, Edge>::GetAllNeighboringVertexes(Vertex* vertex, vector<Vertex*>& neighbors)
+inline void Task1v8<Vertex, Edge>::FindCycle(Vertex* v, vector<State>& states, vector<Vertex*> curPath)
 {
-	typename Graph<Vertex, Edge>::OutputEdgesIterator iter(*Task<Vertex,Edge>::graph, vertex);
+	vector<Vertex*> neighbors;
+	GetAllNeighboringVertexes(v, neighbors);
+
+	if (neighbors.size() == 0)
+	{
+		states[v->index] = NotInCycle;
+	}
+
+	for (int i = 0; i < neighbors.size(); i++)
+	{
+		Vertex* curVertex = neighbors[i];
+
+		if (curVertex == curPath[0])
+		{
+			vector<Vertex*> successPath = curPath;
+			successPath.push_back(curVertex);
+			result.push_back(successPath);
+		}
+
+		if (std::find(curPath.begin(), curPath.end(), curVertex) != curPath.end())
+			continue;
+
+		if (states[neighbors[i]->index] == ProbablyInCycle)
+		{
+			curPath.push_back(neighbors[i]);
+			FindCycle(neighbors[i], states, curPath);
+		}
+	}
+
+}
+
+template<class Vertex, class Edge>
+inline void Task1v8<Vertex, Edge>::GetAllNeighboringVertexes(Vertex* vertex, vector<Vertex*>& neighbors)
+{
+	typename Graph<Vertex, Edge>::OutputEdgesIterator iter(*Task<Vertex, Edge>::graph, vertex);
 
 	while (iter != iter.End())
 	{
@@ -136,16 +146,16 @@ inline void Task1v13<Vertex, Edge>::GetAllNeighboringVertexes(Vertex* vertex, ve
 
 #pragma region Task2
 
-string task2Description = "Определение центра взвешенного орграфа на основе алгоритма Флойда";
+string task2Description = "Определение периферии взвешенного орграфа на основе алгоритма Флойда";
 
 template <class Vertex, class Edge>
-class Task2v14 : public Task<Vertex, Edge>
+class Task2v9 : public Task<Vertex, Edge>
 {
 public:
-	Task2v14(Graph<Vertex, Edge>& graph) : Task<Vertex, Edge>(graph) 
+	Task2v9(Graph<Vertex, Edge>& graph) : Task<Vertex, Edge>(graph)
 	{
-		if (graph.IsDirected() == false) 
-			throw "Граф должен быть направленным";  
+		if (graph.IsDirected() == false)
+			throw "Граф должен быть направленным";
 		Restart();
 	};
 	virtual void Restart();
@@ -159,7 +169,7 @@ protected:
 };
 
 template<class Vertex, class Edge>
-inline void Task2v14<Vertex, Edge>::Result()
+inline void Task2v9<Vertex, Edge>::Result()
 {
 	if (result.empty())
 		cout << "Нет таких вершин\n";
@@ -171,7 +181,7 @@ inline void Task2v14<Vertex, Edge>::Result()
 }
 
 template<class Vertex, class Edge>
-inline void Task2v14<Vertex, Edge>::Restart()
+inline void Task2v9<Vertex, Edge>::Restart()
 {
 	result.clear();
 	int vertexes = Task<Vertex, Edge>::graph->GetVertexesCount();
@@ -183,28 +193,24 @@ inline void Task2v14<Vertex, Edge>::Restart()
 	Floyd(weights);
 
 	vector<int> mins(vertexes);
-	int min = numeric_limits<int>::max();
+	int diameter = -1;
 	for (int i = 0; i < vertexes; i++)
 	{
 		mins[i] = GetMaxWeight(weights, i);
-		min = std::min(min, mins[i]);
+		diameter = std::max(diameter, mins[i]);
 	}
-
-	if (min == numeric_limits<int>::max())
-		return;
 
 	vector<Vertex*> graphVertexes = GetAllVertexes();
 
 	for (int i = 0; i < mins.size(); i++)
 	{
-		if (min == mins[i])
+		if (diameter == mins[i])
 			result.push_back(graphVertexes[i]);
 	}
-
 }
 
 template<class Vertex, class Edge>
-inline vector<vector<int>> Task2v14<Vertex, Edge>::GetWeightMatrix()
+inline vector<vector<int>> Task2v9<Vertex, Edge>::GetWeightMatrix()
 {
 	int vertexes = Task<Vertex, Edge>::graph->GetVertexesCount();
 
@@ -236,7 +242,7 @@ inline vector<vector<int>> Task2v14<Vertex, Edge>::GetWeightMatrix()
 }
 
 template<class Vertex, class Edge>
-inline vector<Vertex*> Task2v14<Vertex, Edge>::GetAllVertexes()
+inline vector<Vertex*> Task2v9<Vertex, Edge>::GetAllVertexes()
 {
 	vector<Vertex*> vertexes;
 	typename Graph<Vertex, Edge>::VertexesIterator iter(*Task<Vertex, Edge>::graph);
@@ -251,7 +257,7 @@ inline vector<Vertex*> Task2v14<Vertex, Edge>::GetAllVertexes()
 }
 
 template<class Vertex, class Edge>
-inline void Task2v14<Vertex, Edge>::Floyd(vector<vector<int>>& weights)
+inline void Task2v9<Vertex, Edge>::Floyd(vector<vector<int>>& weights)
 {
 	for (int i = 0; i < weights.size(); i++)
 	{
@@ -270,13 +276,13 @@ inline void Task2v14<Vertex, Edge>::Floyd(vector<vector<int>>& weights)
 }
 
 template<class Vertex, class Edge>
-inline int Task2v14<Vertex, Edge>::GetMaxWeight(vector<vector<int>> weights, int vertexIndex)
+inline int Task2v9<Vertex, Edge>::GetMaxWeight(vector<vector<int>> weights, int vertexIndex)
 {
 	int max = (vertexIndex == 0 ? -1 : weights[0][vertexIndex]);
 	if (weights.size() == 1) max = weights[0][0];
 
 	for (int i = 0; i < weights.size(); i++)
-	{	
+	{
 		if (i == vertexIndex) continue;
 
 		max = std::max(max, weights[i][vertexIndex]);
